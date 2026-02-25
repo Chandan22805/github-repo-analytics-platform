@@ -1,4 +1,3 @@
 .env
 .envrc
 .venv
-src/config.py
