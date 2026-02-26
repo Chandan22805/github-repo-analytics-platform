@@ -1,3 +1,4 @@
+import time
 import requests
 from config import GITHUB_TOKEN, BASE_URL
 
@@ -13,9 +14,53 @@ class GitHubClient:
             "Accept": "application/vnd.github+json"
         }
 
-    def get_user_repos(self, username: str):
+    def get_user_repos(self, username: str, retries: int = 3):
         """List repos for authenticated user"""
-        url = f"{BASE_URL}/users/{username}/repos"
-        response = requests.get(url, headers=self.headers)
-        response.raise_for_status()
-        return response.json()
+        all_repos = []
+        page = 1
+        
+        while True:
+        
+            url = f"{BASE_URL}/users/{username}/repos"
+            params = {
+                "per_page" : 100,
+                "page" : page
+            } 
+               
+            for attempt in range(retries):
+                
+                try:
+                    response = requests.get(url, 
+                                            headers=self.headers,
+                                            params=params)
+                    response.raise_for_status()
+                    repos = response.json()
+                    break  
+                
+                except requests.exceptions.HTTPError as e:
+                    status = e.response.status_code
+                    
+                    if(status >= 500 and attempt < retries -1 ):
+                        wait_time = 2 ** attempt
+                        time.sleep(wait_time)
+                        continue
+                    
+                    else:
+                        raise
+                
+                except requests.exceptions.RequestException:
+                    
+                    if attempt < retries - 1:
+                        wait_time = 2 ** attempt
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        raise
+            
+            if not repos:
+                break
+            
+            all_repos.extend(repos)
+            page += 1
+            
+        return all_repos                     
