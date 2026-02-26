@@ -33,6 +33,16 @@ class GitHubClient:
                     response = requests.get(url, 
                                             headers=self.headers,
                                             params=params)
+                    
+                    # Rate limit handling
+                    remaining = int(response.headers.get("X-RateLimit-Remaining", 1))
+                    reset_time = int(response.headers.get("X-RateLimit-Reset", 0))
+                    
+                    if remaining == 0:
+                        sleep_seconds = max(reset_time - int(time.time()), 0)
+                        time.sleep(sleep_seconds)
+                        continue
+                        
                     response.raise_for_status()
                     repos = response.json()
                     break  

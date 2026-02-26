@@ -1,3 +1,4 @@
+import sys
 from github_client import GitHubClient
 from db import insert_repo, insert_company
 
@@ -31,4 +32,4 @@ def run_ingestion(username:str):
         insert_repo(repo_data)
     
 if __name__ == "__main__":
-    run_ingestion("Chandan22805")
+    run_ingestion(sys.argv[1])
