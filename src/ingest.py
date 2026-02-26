@@ -1,9 +1,9 @@
-from github_client import GithubClient
-from db import insert_repo
+from github_client import GitHubClient
+from db import insert_repo, insert_company
 
-def run_ingestion(username:str ):
+def run_ingestion(username:str):
     
-    client = GithubClient()
+    client = GitHubClient()
 
     repos = client.get_user_repos(username)
     
@@ -26,8 +26,9 @@ def run_ingestion(username:str ):
             "created_at": repo["created_at"],
             "updated_at": repo["updated_at"],
         }
-
-    insert_repo(repo_data)
+    
+        insert_company(company_data)
+        insert_repo(repo_data)
     
 if __name__ == "__main__":
     run_ingestion("Chandan22805")
