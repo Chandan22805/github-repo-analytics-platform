@@ -9,8 +9,8 @@ def insert_repo(repo_data: dict):
     cursor = conn.cursor()
     
     query = """
-            INSERT INTO repos (id, company_id, name, full_name, language, stars, forks, open_issues, created_at, updated_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) 
+            INSERT INTO repos (id, company_id, name, full_name, language, created_at, updated_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s) 
             ON CONFLICT (id) DO NOTHING;        
         """
     
@@ -20,9 +20,6 @@ def insert_repo(repo_data: dict):
         repo_data["name"],
         repo_data["full_name"],
         repo_data["language"],
-        repo_data["stars"],
-        repo_data["forks"],
-        repo_data["open_issues"],
         repo_data["created_at"],
         repo_data["updated_at"]
     )
@@ -31,6 +28,7 @@ def insert_repo(repo_data: dict):
     conn.commit()
     cursor.close()
     conn.close()
+    print("Inserted repos")
     
 def insert_company(company_data: dict):
     conn = get_connection()
@@ -51,3 +49,30 @@ def insert_company(company_data: dict):
     conn.commit()
     cursor.close()
     conn.close()
+    print("Inserted company")
+
+def insert_repo_snapshot(snapshot_data: dict):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    query = """
+            INSERT INTO repo_snapshots(
+                repo_id, snapshot_date, stars, forks, open_issues
+            )
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (repo_id, snapshot_date) DO NOTHING;
+        """
+  
+    values = (
+        snapshot_data["repo_id"],
+        snapshot_data["snapshot_date"],
+        snapshot_data["stars"],
+        snapshot_data["forks"],
+        snapshot_data["open_issues"],
+    )
+    
+    cursor.execute(query,values)
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print("Inserted snapshot")

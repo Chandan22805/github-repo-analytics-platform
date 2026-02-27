@@ -1,6 +1,6 @@
 import sys
 from github_client import GitHubClient
-from db import insert_repo, insert_company
+from db import insert_repo, insert_company, insert_repo_snapshot
 
 def run_ingestion(username:str):
     
@@ -21,15 +21,21 @@ def run_ingestion(username:str):
             "name": repo["name"],
             "full_name": repo["full_name"],
             "language": repo["language"],
+            "created_at": repo["created_at"],
+            "updated_at": repo["updated_at"],
+        }
+        
+        snapshot_data ={
+            "repo_id" : repo["id"],
+            "snapshot_date": repo["created_at"],
             "stars": repo["stargazers_count"],
             "forks": repo["forks_count"],
             "open_issues": repo["open_issues_count"],
-            "created_at": repo["created_at"],
-            "updated_at": repo["updated_at"],
         }
     
         insert_company(company_data)
         insert_repo(repo_data)
-    
+        insert_repo_snapshot(snapshot_data)
+         
 if __name__ == "__main__":
     run_ingestion(sys.argv[1])
