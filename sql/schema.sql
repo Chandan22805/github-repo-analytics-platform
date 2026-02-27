@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS repos(
     update_at TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS repo_sanpshots(
+CREATE TABLE IF NOT EXISTS repo_snapshots(
     repo_id BIGINT REFERENCES repos(id),
     snapshot_date DATE,
     stars BIGINT,
