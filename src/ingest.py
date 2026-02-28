@@ -52,4 +52,6 @@ def run_ingestion(username:str):
         conn.close()
          
 if __name__ == "__main__":
-    run_ingestion(sys.argv[1])
+    companies = sys.argv[1:]
+    for company in companies :
+        run_ingestion(company)
