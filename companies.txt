@@ -1,0 +1,8 @@
+microsoft
+apple
+netflix
+google
+anthropic
+openai
+meta
+github
