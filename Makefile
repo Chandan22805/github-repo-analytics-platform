@@ -1,8 +1,8 @@
 setup-db:
-	psql -f sql/schema.sql
-	psql -f sql/views.sql
+	psql "postgresql://github:github@localhost:5433/github_analytics" -f sql/schema.sql
+	psql "postgresql://github:github@localhost:5433/github_analytics" -f sql/views.sql
 
 ingest:
-	python src/ingest.py $(cat companies.txt)
+	python src/ingest.py microsoft apple netflix google anthropic openai meta github
 
 all: setup-db ingest

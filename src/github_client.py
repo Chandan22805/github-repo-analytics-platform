@@ -14,7 +14,7 @@ class GitHubClient:
             "Accept": "application/vnd.github+json"
         }
 
-    def get_user_repos(self, username: str, retries: int = 3):
+    def get_user_repos(self, username: str, since=None, retries: int = 3):
         """List repos for authenticated user"""
         all_repos = []
         page = 1
@@ -26,6 +26,8 @@ class GitHubClient:
                 "per_page" : 100,
                 "page" : page
             } 
+            if since:
+                params["since"] = since.isoformat()
                
             for attempt in range(retries):
                 
