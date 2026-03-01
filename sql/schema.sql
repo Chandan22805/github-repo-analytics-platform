@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS companies(
 
 CREATE TABLE IF NOT EXISTS repos(
     id BIGINT PRIMARY KEY,
-    company_id BIGINT REFERENCES companies(company_id)
+    company_id BIGINT REFERENCES companies(company_id),
     name TEXT,
     full_name TEXT,
     language TEXT,
@@ -22,6 +22,11 @@ CREATE TABLE IF NOT EXISTS repo_snapshots(
     forks BIGINT,
     open_issues INTEGER,
     PRIMARY KEY (repo_id, snapshot_date)
+);
+
+CREATE TABLE IF NOT EXISTS ingestion_state (
+    source TEXT PRIMARY KEY,
+    last_run TIMESTAMP
 );
 
 COMMIT;

@@ -1,5 +1,6 @@
 import psycopg2
 from psycopg2.extras import execute_values
+import datetime
 
 from config import DB_URL
 
@@ -51,3 +52,36 @@ def bulk_insert_snapshots(conn, snapshots: list):
   
     execute_values(cursor, query, snapshots)
     cursor.close()
+
+def get_last_run(conn, source: str):
+    cursor = conn.cursor()
+    
+    query = """
+            SELECT last_run 
+            FROM ingestion_state
+            WHERE source = %s; 
+            """
+        
+    values = source
+    
+    cursor.execute(query, (values,))
+    result = cursor.fetchone()
+    cursor.close()
+    return result[0] if result else None
+    
+    
+def update_last_run(conn, source: str, timestamp):
+        cursor = conn.cursor()
+        
+        query = """
+                INSERT INTO ingestion_state (source, last_run)
+                VALUES (%s, %s)
+                ON CONFLICT(source)
+                DO UPDATE SET last_run = EXCLUDED.last_run;
+                """
+        
+        values = [source, timestamp]
+        
+        cursor.execute(query, values)
+        
+        cursor.close()
