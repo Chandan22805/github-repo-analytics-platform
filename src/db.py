@@ -13,9 +13,9 @@ def bulk_insert_companies(conn, companies:dict):
     cursor = conn.cursor()
     
     query = """
-            INSERT INTO companies(id, name)
+            INSERT INTO companies(company_id, company_name)
             VALUES %s
-            ON CONFLICT (id) DO NOTHING;
+            ON CONFLICT (company_id) DO NOTHING;
         """
     
     values = [(cid, name) for cid, name in companies.items()]
@@ -106,7 +106,7 @@ def get_latest_repo_metrics(conn):
         for row in rows
     }
 
-def get_all_comapnies(conn):
+def get_all_companies(conn):
     cursor = conn.cursor()
     query = """
             SELECT name FROM companies;

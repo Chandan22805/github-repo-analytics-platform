@@ -2,3 +2,4 @@
 .envrc
 .venv
 src/__pycache__
+logs

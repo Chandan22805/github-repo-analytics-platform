@@ -1,12 +1,24 @@
 import sys
+import logging
 from datetime import date
 
 from github_client import GitHubClient
 from db import get_connection, bulk_insert_companies, bulk_insert_repos, bulk_insert_snapshots, get_last_run, update_last_run, get_latest_repo_metrics, get_all_companies
 
+logging.basicConfig(
+    level = logging.INFO,
+    format = "%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("logs/ingestion.log")
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
 def run_ingestion(username=None):
     conn = get_connection()
-    
+    logger.info("Starting ingestion")
     try:
         client = GitHubClient()
         repos_to_insert = {}
@@ -16,6 +28,7 @@ def run_ingestion(username=None):
         today = date.today()
         
         companies = ( [username] if username else get_all_companies(conn) )
+        logger.info(f"Companies to process: {len(companies)}")
         
         for company in companies:
             last_run = get_last_run(conn, company)
@@ -46,7 +59,7 @@ def run_ingestion(username=None):
                     repo["open_issues_count"]
                 ))
                 
-                changed_repo_ids.append(repo["id"])
+                changed_repo_ids.add(repo["id"])
                 
             update_last_run(conn, company, date.today())
         
@@ -64,19 +77,21 @@ def run_ingestion(username=None):
                     open_issues
                 ))
         
+        logger.info(f"Total companies to insert: {len(companies_to_insert)}")
         bulk_insert_companies(conn, companies_to_insert)
-        print("Inserted companies")
         
+        logger.info(f"Total repos to insert: {len(repos_to_insert)}")
         bulk_insert_repos(conn, repos_to_insert)
-        print("Inserted repos")
         
+        logger.info(f"Total snapshots to insert: {len(snapshots)}")
         bulk_insert_snapshots(conn, snapshots)
-        print("Inserted snapshots")
         
+        logger.info("Committing transaction")
         conn.commit()
             
     finally:
         conn.close()
+        logger.info("Ingestion completed successfully")
          
 if __name__ == "__main__":
     companies = sys.argv[1:]
