@@ -68,8 +68,7 @@ def get_last_run(conn, source: str):
     result = cursor.fetchone()
     cursor.close()
     return result[0] if result else None
-    
-    
+       
 def update_last_run(conn, source: str, timestamp):
         cursor = conn.cursor()
         
@@ -85,3 +84,34 @@ def update_last_run(conn, source: str, timestamp):
         cursor.execute(query, values)
         
         cursor.close()
+
+def get_latest_repo_metrics(conn):
+    cursor = conn.cursor()
+    
+    query = """
+            SELECT DISTINCT ON(repo_id)
+                repo_id,
+                stars,
+                forks,
+                open_issues
+            FROM repo_snapshots
+            ORDER BY repo_id, snapshot_date DESC;
+        """
+    
+    cursor.execute(query)
+    rows =  cursor.fetchall()
+    cursor.close()
+    return {
+        row[0] :(row[1], row[2], row[3])
+        for row in rows
+    }
+
+def get_all_comapnies(conn):
+    cursor = conn.cursor()
+    query = """
+            SELECT name FROM companies;
+            """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    return [row[0] for row in rows]
