@@ -16,10 +16,10 @@ FROM repo_snapshots;
 
 CREATE OR REPLACE VIEW company_total_stars AS
 SELECT 
-    c.name,
+    c.company_name,
     s.snapshot_date,
     SUM(s.stars) AS total_stars
 FROM repo_snapshots s
 JOIN repos r ON r.id = s.repo_id
-JOIN companies c ON c.id = r.company_id
-GROUP BY c.name, s.snapshot_date;
+JOIN companies c ON c.company_id = r.company_id
+GROUP BY c.company_name, s.snapshot_date;

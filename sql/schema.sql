@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS repos(
     full_name TEXT,
     language TEXT,
     created_at TIMESTAMP,
-    update_at TIMESTAMP
+    updated_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS repo_snapshots(
