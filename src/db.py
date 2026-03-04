@@ -109,9 +109,96 @@ def get_latest_repo_metrics(conn):
 def get_all_companies(conn):
     cursor = conn.cursor()
     query = """
-            SELECT name FROM companies;
+            SELECT company_name FROM companies;
             """
     cursor.execute(query)
     rows = cursor.fetchall()
     cursor.close()
-    return [row[0] for row in rows]
+    return [name[0] for name in rows]
+
+def bulk_insert_language_snapshots(conn, snapshots: list):
+    if not snapshots: return 
+    cursor = conn.cursor()
+    
+    query = """
+            INSERT INTO language_snapshots(
+                repo_id, snapshot_date, language_id, bytes)
+                VALUES %s
+                ON CONFLICT (repo_id, snapshot_date, language_id) DO NOTHING
+            """
+            
+    execute_values(cursor, query, snapshots)
+    cursor.close()
+
+def get_latest_langauage_metrics(conn):
+    cursor = conn.cursor()
+    
+    query = """
+            SELECT DISTINCT ON(repo_id, langauge_id)
+                repo_id,
+                language_id,
+                bytes
+            FROM language_snapshots
+            ORDER BY repo_id, language_id, snapshot_date DESC
+            """
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    result = {}
+
+    for repo_id, language_id, bytes_ in rows:
+        result.setdefault(repo_id, {})[language_id] = bytes_
+        
+    return result
+    
+def get_all_languages(conn):
+    cursor = conn.cursor()
+    
+    query = """
+            SELECT language_id, language_name FROM languages
+            """
+            
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    
+    return { name: lid for lid,name in rows}
+
+def bulk_insert_languages(conn, languages: set):
+    if not languages: return
+    cursor = conn.cursor()
+    
+    query = """
+            INSERT INTO languages(language_name)
+            VALUES %s
+            ON CONFLICT (language_name) DO NOTHING;
+        """
+    
+    values = [(name,) for name in languages]
+    
+    execute_values(cursor, query, values)
+    cursor.close()
+
+def get_latest_language_metrics(conn):
+    cursor= conn.cursor()
+    
+    query = """
+            SELECT DISTINCT ON(repo_id, language_id)
+                repo_id,
+                language_id,
+                bytes
+            FROM language_snapshots
+            ORDER BY repo_id, language_id, snapshot_date DESC;
+        """
+        
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    result = {}
+
+    for repo_id, language_id, bytes in rows:
+        result.setdefault(repo_id, {})[language_id] = bytes
+    
+    return result
+    
