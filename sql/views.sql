@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Growth of metrics over time per repo
 
 CREATE OR REPLACE VIEW repo_daily_growth AS 
@@ -23,3 +25,5 @@ FROM repo_snapshots s
 JOIN repos r ON r.id = s.repo_id
 JOIN companies c ON c.company_id = r.company_id
 GROUP BY c.company_name, s.snapshot_date;
+
+COMMIT;
