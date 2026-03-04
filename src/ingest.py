@@ -31,10 +31,19 @@ def run_ingestion(username=None):
         logger.info(f"Companies to process: {len(companies)}")
         
         for company in companies:
+            
             last_run = get_last_run(conn, company)
             repos = client.get_user_repos(company, since=last_run)
             
             for repo in repos :
+                
+                if not repo.get("id"):
+                    logger.warning("Repo missing ID. Skipping.")
+                    continue
+                
+                if not repo.get("owner"):
+                    logger.warning("Repo missing owner. Skipping.")
+                    continue
                 
                 company_id = repo["owner"]["id"]
                 company_name = repo["owner"]["login"]
