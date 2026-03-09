@@ -37,7 +37,7 @@ def run_ingestion(usernames=None):
             last_run = get_last_run(conn, company)
             repos = client.get_user_repos(company, since=last_run)
             for repo in repos :
-                print(repo["name"])
+                # print(repo["name"])
                 if not repo.get("id"):
                     logger.warning("Repo missing ID. Skipping.")
                     continue
