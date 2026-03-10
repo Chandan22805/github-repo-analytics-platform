@@ -36,6 +36,12 @@ def run_ingestion(usernames=None):
         for company in companies:
             last_run = get_last_run(conn, company)
             repos = client.get_user_repos(company, since=last_run)
+            
+            if len(repos) == 0:
+                logger.warning(f"No repos returned for {company}")
+                
+            if not isinstance(repos, list):
+                logger.error("Unexpected GitHub API response format")
             for repo in repos :
                 # print(repo["name"])
                 if not repo.get("id"):
@@ -70,6 +76,9 @@ def run_ingestion(usernames=None):
                 ))
                 
                 languages = client.get_repo_languages(company_name, repo["name"])
+                
+                if not languages:
+                    logger.warning(f"No languages detected for repo {repo_id}")
                 
                 for language_name, bytes_ in languages.items():
                     languages_to_insert.add(language_name)
@@ -136,9 +145,24 @@ def run_ingestion(usernames=None):
         logger.info(f"Total language snapshots to insert: {len(language_snapshots)}")
         bulk_insert_language_snapshots(conn, language_snapshots)
         
+        if len(repo_snapshots) < 5:
+            logger.warning("Unusually low snapshot count detected")    
+        
         logger.info("Committing transaction")
         conn.commit()
-            
+        
+        logger.info(
+            f"""
+            Pipeline run summary
+            --------------------
+            Companies processed: {len(companies)}
+            Repos updated: {len(changed_repo_ids)}
+            Repo snapshots written: {len(repo_snapshots)}
+            Language snapshots written: {len(language_snapshots)}
+            New languages discovered: {len(languages_to_insert)}
+            """
+            )
+        
     finally:
         conn.close()
         logger.info("Ingestion completed successfully")
