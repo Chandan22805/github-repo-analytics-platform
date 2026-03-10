@@ -1,216 +1,380 @@
 # GitHub Analytics Data Warehouse
 
-A production-style incremental GitHub analytics data warehouse featuring hybrid snapshot modeling, batch ingestion, and time-series analysis.
+A production-style GitHub analytics data warehouse featuring incremental ingestion, hybrid snapshot modeling, and automated daily pipelines.
 
-This project demonstrates data engineering maturity through:
+This project demonstrates modern data engineering system design, including:
 
 - Incremental API ingestion
 - Hybrid event-driven + time-driven modeling
 - Batch bulk loading
 - State tracking
 - Transactional integrity
+- Automated orchestration
 - Analytical warehouse design
+- Data quality guarantees
 
 ---
 
-## Architecture Overview
+# Architecture
 
-The system is built in layered form:
+## System Architecture
+            +----------------------+
+            |      GitHub API      |
+            +----------+-----------+
+                       |
+                       | Incremental Fetch (since)
+                       |
+                +------v------+
+                |  Ingestion  |
+                |  Pipeline   |
+                |  (Python)   |
+                +------+------+
+                       |
+                       | Bulk Inserts
+                       |
+             +---------v----------+
+             |  Neon PostgreSQL   |
+             |  Data Warehouse    |
+             +---------+----------+
+                       |
+                       |
+                       |                              
+               +-------v--------+           
+               | Analytical     |           
+               | SQL Views      |            
+               +-------+--------+            
+                       |                          
+                       |                             
+               +-------v--------+
+               |  BI Dashboard  |
+               +----------------+
+                       ^
+                       |
+              +--------+--------+
+              | GitHub Actions  |
+              | Daily Scheduler |
+              +-----------------+
 
-```
+---
+
+# Data Pipeline Overview
+
+The system follows a layered architecture:
 GitHub API
-    ↓
+↓
 Incremental Ingestion (Event-Driven)
-    ↓
+↓
 Dimension Tables
-    ↓
+↓
 Daily Snapshot Layer (Time-Driven)
-    ↓
+↓
 Analytical Views
-```
+↓
+Dashboards / API Consumers
+
+
+This design cleanly separates:
+
+- Data acquisition
+- Warehouse modeling
+- Analytical consumption
 
 ---
 
-## Source Ingestion (Event-Driven)
+# Source Ingestion (Event-Driven)
 
-- Fetches only updated repository data using `since`
+The ingestion pipeline:
+
+- Fetches only updated repository data using the `since` parameter
 - Tracks ingestion state per company
 - Uses idempotent inserts
-- Uses bulk batch loading (`execute_values`)
-- Single transaction per ingestion run
-- Efficient API usage (no redundant calls)
+- Uses batch loading (`execute_values`)
+- Runs inside a single database transaction
+- Avoids redundant API calls
+
+Additional operational behavior:
+
+- API retry with exponential backoff
+- GitHub rate limit handling
+- Structured pipeline logging
 
 ---
 
-## Warehouse Modeling
+# Data Warehouse Modeling
 
-### Dimension Tables
+## Dimension Tables
 
 - `companies`
 - `repos`
+- `languages`
 
-### Fact Table
-
-- `repo_snapshots`
-
-### Additional Tables
-
-- `ingestion_state`
-
-### Design Characteristics
-
-- Daily snapshot generation independent of API updates
-- Separation of ingestion logic from analytical modeling
-- Deterministic time-series grid
-- Referential integrity enforced via foreign keys
+Dimensions store current metadata.
 
 ---
 
-## Hybrid Snapshot Design
+## Fact Tables
 
-This project uses a hybrid modeling strategy:
+### Repository Metrics
+
+`repo_snapshots`
+
+Stores daily time-series metrics:
+
+- stars
+- forks
+- open issues
+
+Primary key:
+(repo_id, snapshot_date)
+
+---
+
+### Language Distribution
+
+`language_snapshots`
+
+Stores historical language distribution per repository.
+
+Primary key:
+(repo_id, snapshot_date, language_id)
+
+
+---
+
+## Operational Tables
+
+`ingestion_state`
+
+Tracks the last successful ingestion timestamp per company and enables incremental API consumption.
+
+---
+
+# Hybrid Snapshot Strategy
+
+This warehouse uses a hybrid modeling strategy.
 
 ### Event-Driven Ingestion
+
 Only repositories updated since the last run are fetched from GitHub.
 
 ### Time-Driven Warehouse
-Every run generates a daily snapshot for all tracked repositories:
-- Updated repositories use fresh API data
-- Unchanged repositories reuse latest stored metrics
-- Ensures one row per repo per day
-- Avoids unnecessary API usage
 
-This approach provides:
+Every ingestion run generates a daily snapshot for all tracked repositories.
+
+| Repo Status | Snapshot Source |
+|-------------|----------------|
+Updated repo | Fresh API data |
+Unchanged repo | Latest stored metrics |
+
+Benefits:
 
 - API efficiency
-- Predictable compute load
-- Strong time-series modeling capability
-- Clear separation of concerns
+- deterministic daily time-series
+- predictable compute load
+- complete historical analytics
 
 ---
 
-## Analytical Layer
+# Analytical Layer
 
-Analytical views are defined in `views.sql`.
+Analytical views are defined in:
+sql/views.sql
+
 
 Examples:
 
-- `repo_daily_growth` (LAG-based star growth)
-- `company_total_stars` (aggregated company metrics)
+### Repo Star Growth
 
-Features:
+`repo_daily_growth`
 
-- Window functions (LAG for growth calculation)
-- Aggregation views
-- Structured time-series queries
-- Ready for BI tools or dashboard integration
+Uses window functions:
+LAG(stars) OVER (PARTITION BY repo_id ORDER BY snapshot_date)
 
----
 
-## Operational Guarantees
-
-- Idempotent ingestion
-- Deterministic daily snapshots
-- Atomic transaction per run
-- No redundant API calls
-- Consistent state tracking
+to calculate daily star growth.
 
 ---
 
-## Project Structure
+### Company Metrics
 
-```
-root/
-│
-├── sql/
-│   ├── schema.sql
-│   └── views.sql
-│
-├── src/
-│   ├── config.py
-│   ├── db.py
-│   ├── github_client.py
-│   └── ingest.py
-│
-├── requirements.txt
-├── .gitignore
-├── Makefile
-└── README.md
-```
+`company_total_stars`
+
+Aggregates repository metrics across companies.
 
 ---
 
-## How to Run
+These views support:
 
-1. Start PostgreSQL
-2. Run database setup:
+- time-series analytics
+- trend analysis
+- BI dashboards
+- programmatic API queries
 
-```
+---
+
+# Automation & Orchestration
+
+The pipeline is automated using **GitHub Actions**.
+
+Daily schedule:
+cron: "0 2 * * *"
+
+
+Pipeline steps:
+
+1. Checkout repository
+2. Install dependencies
+3. Execute ingestion pipeline
+4. Write results to Neon data warehouse
+
+Manual execution is also supported using:
+workflow_dispatch
+
+
+---
+
+# Data Quality & Operational Guarantees
+
+The system enforces strong integrity guarantees.
+
+## Database Constraints
+
+- NOT NULL constraints
+- Foreign keys
+- Composite primary keys
+
+## Idempotent Writes
+
+All inserts use:
+ON CONFLICT DO NOTHING
+
+
+ensuring safe pipeline reruns.
+
+## Snapshot Consistency
+
+Each repository receives exactly:
+1 snapshot per day
+
+
+ensuring deterministic time-series data.
+
+## Observability
+
+Structured logs record:
+
+- repositories processed
+- snapshots written
+- language distributions captured
+- pipeline run summaries
+
+---
+
+# Project Structure
+
+    root/
+    │
+    ├── sql/
+    │ ├── schema.sql
+    │ └── views.sql
+    │
+    ├── src/
+    │ ├── config.py
+    │ ├── db.py
+    │ ├── github_client.py
+    │ ├── ingest.py
+    │ └── api.py
+    │
+    ├── .github/
+    │ └── workflows/
+    │ └── ingest.yml
+    │
+    ├── requirements.txt
+    ├── Makefile
+    ├── .gitignore
+    └── README.md
+
+
+---
+
+# Running the System
+
+## Setup database
 make setup-db
-```
 
-3. Run ingestion:
-
-```
+## Run ingestion
 make all
-```
 
-To ingest a specific company:
+## Ingest a specific company
+python src/ingest.py <GITHUB-USERNAME>
 
-```
-python src/ingest.py <company_name>
-```
-
-To ingest all tracked companies:
-
-```
+## Ingest all tracked companies
 python src/ingest.py
-```
+
 
 ---
 
-## Design Decisions
+# Key Design Decisions
 
-### 1. Hybrid Snapshot Modeling
-GitHub metrics do not change frequently enough to justify full daily API pulls.  
-Incremental ingestion ensures API efficiency, while daily snapshot generation ensures analytical completeness.
+## Hybrid Snapshot Modeling
 
-### 2. Bulk Inserts
-Bulk loading reduces database round-trips and improves ingestion performance when handling many repositories.
+GitHub repository metrics do not change frequently enough to justify full daily API pulls.
 
-### 3. State Tracking
-`ingestion_state` enables incremental API consumption and ensures efficient, repeatable ingestion runs.
-
-### 4. Single Transaction Per Run
-Using a single transaction:
-- Ensures atomic ingestion
-- Prevents partial updates
-- Maintains consistency between dimensions and fact tables
-- Aligns ingestion state with warehouse updates
+Hybrid modeling ensures efficient ingestion while maintaining complete historical analytics.
 
 ---
 
-## Future Improvements
+## Incremental API Consumption
 
-- Soft delete handling
-- Historical dimension tracking (SCD support)
-- Partitioned fact table
-- Materialized views
-- Airflow / Prefect orchestration
-- Data quality validation layer
-- Performance monitoring metrics
+Using GitHub's `since` parameter minimizes API usage and reduces pipeline runtime.
 
 ---
 
-## Purpose
+## Bulk Insert Strategy
 
-This project was built to demonstrate:
+Batch inserts reduce database round trips and improve ingestion performance when processing many repositories.
 
-- Incremental data pipeline design
-- Warehouse modeling principles
-- Hybrid snapshot strategies
-- Transactional ingestion patterns
-- Analytical view design
-- End-to-end system thinking
+---
 
-It is intended as a portfolio-level demonstration of data engineering maturity rather than a simple API data collector.
+## State Tracking
+
+The `ingestion_state` table enables reliable incremental ingestion and safe recovery after failures.
+
+---
+
+## Single Transaction Pipeline
+
+Each pipeline run executes inside a single transaction.
+
+This guarantees:
+
+- atomic ingestion
+- consistent warehouse updates
+- no partial snapshots
+
+---
+
+# Future Improvements
+
+Potential enhancements:
+
+- Slowly Changing Dimensions (SCD)
+- Partitioned fact tables
+- Materialized analytical views
+- Pipeline runtime monitoring
+
+---
+
+# Purpose
+
+This project demonstrates:
+
+- incremental data pipeline design
+- warehouse modeling principles
+- hybrid snapshot strategies
+- transactional ingestion patterns
+- automated data pipelines
+- analytical warehouse design
+- end-to-end data system thinking
+
+The goal is to showcase data engineering architecture rather than simple API data extraction.
