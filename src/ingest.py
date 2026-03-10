@@ -1,5 +1,6 @@
 import sys
 import logging
+import time
 from datetime import date
 
 from github_client import GitHubClient
@@ -17,6 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def run_ingestion(usernames=None):
+    start_time = time.time()
     conn = get_connection()
     logger.info("Starting ingestion")
     try:
@@ -151,6 +153,9 @@ def run_ingestion(usernames=None):
         logger.info("Committing transaction")
         conn.commit()
         
+        end_time = time.time()
+        duration = end_time - start_time
+        
         logger.info(
             f"""
             Pipeline run summary
@@ -160,6 +165,7 @@ def run_ingestion(usernames=None):
             Repo snapshots written: {len(repo_snapshots)}
             Language snapshots written: {len(language_snapshots)}
             New languages discovered: {len(languages_to_insert)}
+            Duration: {duration:.2f} seconds
             """
             )
         
