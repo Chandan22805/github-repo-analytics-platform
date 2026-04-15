@@ -10,8 +10,7 @@ logging.basicConfig(
     level = logging.INFO,
     format = "%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("logs/ingestion.log")
+        logging.StreamHandler()
     ]
 )
 
@@ -67,13 +66,13 @@ def run_ingestion(usernames=None):
                 
                 company_id = repo["owner"]["id"]
                 company_name = repo["owner"]["login"]
-                
                 companies_to_insert[company_id] = company_name
+                repo_name = repo["name"]
                 
                 repos_to_insert[repo["id"]] = (
                     repo["id"],
                     company_id,
-                    repo["name"],
+                    repo_name,
                     repo["full_name"],
                     repo["language"],
                     repo["created_at"],
@@ -88,10 +87,10 @@ def run_ingestion(usernames=None):
                     repo["open_issues_count"]
                 ))
                 
-                languages = client.get_repo_languages(company_name, repo["name"])
+                languages = client.get_repo_languages(company_name, repo_name)
                 
                 if not languages:
-                    logger.warning(f"No languages detected for repo {repo["name"]}")
+                    logger.warning(f"No languages detected for repo {repo_name}")
                 
                 for language_name, bytes_ in languages.items():
                     languages_to_insert.add(language_name)
