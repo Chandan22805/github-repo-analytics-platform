@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def run_ingestion(usernames=None):
     start_time = time.time()
     conn = get_connection()
-    logger.info("Starting ingestion")
+    logger.info("Starting Phase-I of ingestion pipeline")
     try:
         client = GitHubClient()
         repos_to_insert = {}
@@ -31,13 +31,24 @@ def run_ingestion(usernames=None):
         languages_to_insert = set()
         changed_repo_ids = set()
         today = date.today()
-        
+        last_run = get_last_run(conn)
+        latest_repo_metrics = get_latest_repo_metrics(conn)
+        latest_language_metrics = get_latest_language_metrics(conn)
         companies = usernames if usernames else get_all_companies(conn) 
         logger.info(f"Companies to process: {len(companies)}")
-        
+
+    finally:
+        conn.close()
+        logger.info("Phase-I completed : Database fetch completed successfully")
+    
+    logger.info("Starting Phase-II of ingestion pipeline")
+    
+    conn = None
+    
+    try:
         for company in companies:
-            last_run = get_last_run(conn, company)
-            repos = client.get_user_repos(company, since=last_run)
+            
+            repos = client.get_user_repos(company, since=last_run.get(company))
             
             if len(repos) == 0:
                 logger.warning(f"No repos returned for {company}")
@@ -80,7 +91,7 @@ def run_ingestion(usernames=None):
                 languages = client.get_repo_languages(company_name, repo["name"])
                 
                 if not languages:
-                    logger.warning(f"No languages detected for repo {repo_id}")
+                    logger.warning(f"No languages detected for repo {repo["name"]}")
                 
                 for language_name, bytes_ in languages.items():
                     languages_to_insert.add(language_name)
@@ -93,10 +104,9 @@ def run_ingestion(usernames=None):
                     ))
                     
                 changed_repo_ids.add(repo["id"])
-                
-            update_last_run(conn, company, today)
         
-        latest_repo_metrics = get_latest_repo_metrics(conn)
+        conn = get_connection()
+        update_last_run(conn, {company : today for company in companies})
         
         for repo_id, metrics in latest_repo_metrics.items():
             if repo_id not in changed_repo_ids:
@@ -109,8 +119,6 @@ def run_ingestion(usernames=None):
                     forks,
                     open_issues
                 ))
-        
-        latest_language_metrics = get_latest_language_metrics(conn)
         
         for repo_id, lang_dict in latest_language_metrics.items():
             if repo_id not in changed_repo_ids:
@@ -170,8 +178,9 @@ def run_ingestion(usernames=None):
             )
         
     finally:
-        conn.close()
-        logger.info("Ingestion completed successfully")
+        if conn:
+            conn.close()
+        logger.info("Phase-II completed : Ingestion completed successfully")
          
 if __name__ == "__main__":
     companies = sys.argv[1:]

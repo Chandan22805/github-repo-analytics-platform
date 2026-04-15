@@ -53,23 +53,23 @@ def bulk_insert_snapshots(conn, snapshots: list):
     execute_values(cursor, query, snapshots)
     cursor.close()
 
-def get_last_run(conn, source: str):
+def get_last_run(conn):
     cursor = conn.cursor()
     
     query = """
-            SELECT last_run 
-            FROM ingestion_state
-            WHERE source = %s; 
+            SELECT source, last_run 
+            FROM ingestion_state;
             """
-        
-    values = source
-    
-    cursor.execute(query, (values,))
-    result = cursor.fetchone()
+            
+    cursor.execute(query)
+    rows = cursor.fetchall()
     cursor.close()
-    return result[0] if result else None
+    return {
+        row[0] : row[1]
+        for row in rows
+    }
        
-def update_last_run(conn, source: str, timestamp):
+def update_last_run(conn, last_run:dict):
         cursor = conn.cursor()
         
         query = """
@@ -79,9 +79,9 @@ def update_last_run(conn, source: str, timestamp):
                 DO UPDATE SET last_run = EXCLUDED.last_run;
                 """
         
-        values = [source, timestamp]
+        values = [(source, timestamp) for source, timestamp in last_run.items()]
         
-        cursor.execute(query, values)
+        execute_values(cursor, query, values)
         
         cursor.close()
 
@@ -130,11 +130,11 @@ def bulk_insert_language_snapshots(conn, snapshots: list):
     execute_values(cursor, query, snapshots)
     cursor.close()
 
-def get_latest_langauage_metrics(conn):
+def get_latest_language_metrics(conn):
     cursor = conn.cursor()
     
     query = """
-            SELECT DISTINCT ON(repo_id, langauge_id)
+            SELECT DISTINCT ON(repo_id, language_id)
                 repo_id,
                 language_id,
                 bytes
