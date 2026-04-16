@@ -74,7 +74,7 @@ def update_last_run(conn, last_run:dict):
         
         query = """
                 INSERT INTO ingestion_state (source, last_run)
-                VALUES (%s, %s)
+                VALUES %s
                 ON CONFLICT(source)
                 DO UPDATE SET last_run = EXCLUDED.last_run;
                 """
