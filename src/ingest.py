@@ -4,7 +4,7 @@ import time
 from datetime import date
 
 from github_client import GitHubClient
-from db import get_connection, bulk_insert_companies, bulk_insert_repos, bulk_insert_snapshots, get_last_run, update_last_run, get_latest_repo_metrics, get_all_companies, bulk_insert_languages, get_all_languages, bulk_insert_language_snapshots, get_latest_language_metrics
+from db import get_connection, get_latest_repo_metrics, get_latest_language_metrics, get_all_companies, get_all_languages, get_last_run, bulk_insert_companies, bulk_insert_repos, bulk_insert_languages, bulk_insert_snapshots, bulk_insert_language_snapshots, update_last_run, clean_up_db
 
 logging.basicConfig(
     level = logging.INFO,
@@ -156,6 +156,8 @@ def run_ingestion(usernames=None):
         
         if len(repo_snapshots) < 5:
             logger.warning("Unusually low snapshot count detected")    
+        
+        clean_up_db(conn)
         
         logger.info("Committing transaction")
         conn.commit()

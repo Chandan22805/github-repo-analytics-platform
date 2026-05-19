@@ -4,9 +4,117 @@ import datetime
 
 from config import DB_URL
 
+#Connection
 def get_connection():
     return psycopg2.connect(DB_URL)
 
+#Reads
+def get_last_run(conn):
+    cursor = conn.cursor()
+    
+    query = """
+            SELECT source, last_run 
+            FROM ingestion_state;
+            """
+            
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    return {
+        row[0] : row[1]
+        for row in rows
+    }
+       
+def get_latest_repo_metrics(conn):
+
+    cursor = conn.cursor()
+    
+    query = """
+            SELECT DISTINCT ON(repo_id)
+                repo_id,
+                stars,
+                forks,
+                open_issues
+            FROM repo_snapshots
+            ORDER BY repo_id, snapshot_date DESC;
+        """
+    
+    cursor.execute(query)
+    rows =  cursor.fetchall()
+    cursor.close()
+    return {
+        row[0] :(row[1], row[2], row[3])
+        for row in rows
+    }
+
+def get_all_companies(conn):
+    cursor = conn.cursor()
+    query = """
+            SELECT company_name FROM companies;
+            """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    return [name[0] for name in rows]
+
+def get_latest_language_metrics(conn):
+    cursor = conn.cursor()
+    
+    query = """
+            SELECT DISTINCT ON(repo_id, language_id)
+                repo_id,
+                language_id,
+                bytes
+            FROM language_snapshots
+            ORDER BY repo_id, language_id, snapshot_date DESC
+            """
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    result = {}
+
+    for repo_id, language_id, bytes_ in rows:
+        result.setdefault(repo_id, {})[language_id] = bytes_
+        
+    return result
+
+def get_all_languages(conn):
+    cursor = conn.cursor()
+    
+    query = """
+            SELECT language_id, language_name FROM languages
+            """
+            
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    
+    return { name: lid for lid,name in rows}
+
+def get_latest_language_metrics(conn):
+    cursor= conn.cursor()
+    
+    query = """
+            SELECT DISTINCT ON(repo_id, language_id)
+                repo_id,
+                language_id,
+                bytes
+            FROM language_snapshots
+            ORDER BY repo_id, language_id, snapshot_date DESC;
+        """
+        
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    cursor.close()
+    result = {}
+
+    for repo_id, language_id, bytes in rows:
+        result.setdefault(repo_id, {})[language_id] = bytes
+    
+    return result
+ 
+#Inserts
 def bulk_insert_companies(conn, companies:dict):
     if not companies: return
     
@@ -53,69 +161,6 @@ def bulk_insert_snapshots(conn, snapshots: list):
     execute_values(cursor, query, snapshots)
     cursor.close()
 
-def get_last_run(conn):
-    cursor = conn.cursor()
-    
-    query = """
-            SELECT source, last_run 
-            FROM ingestion_state;
-            """
-            
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    cursor.close()
-    return {
-        row[0] : row[1]
-        for row in rows
-    }
-       
-def update_last_run(conn, last_run:dict):
-        cursor = conn.cursor()
-        
-        query = """
-                INSERT INTO ingestion_state (source, last_run)
-                VALUES %s
-                ON CONFLICT(source)
-                DO UPDATE SET last_run = EXCLUDED.last_run;
-                """
-        
-        values = [(source, timestamp) for source, timestamp in last_run.items()]
-        
-        execute_values(cursor, query, values)
-        
-        cursor.close()
-
-def get_latest_repo_metrics(conn):
-    cursor = conn.cursor()
-    
-    query = """
-            SELECT DISTINCT ON(repo_id)
-                repo_id,
-                stars,
-                forks,
-                open_issues
-            FROM repo_snapshots
-            ORDER BY repo_id, snapshot_date DESC;
-        """
-    
-    cursor.execute(query)
-    rows =  cursor.fetchall()
-    cursor.close()
-    return {
-        row[0] :(row[1], row[2], row[3])
-        for row in rows
-    }
-
-def get_all_companies(conn):
-    cursor = conn.cursor()
-    query = """
-            SELECT company_name FROM companies;
-            """
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    cursor.close()
-    return [name[0] for name in rows]
-
 def bulk_insert_language_snapshots(conn, snapshots: list):
     if not snapshots: return 
     cursor = conn.cursor()
@@ -129,41 +174,6 @@ def bulk_insert_language_snapshots(conn, snapshots: list):
             
     execute_values(cursor, query, snapshots)
     cursor.close()
-
-def get_latest_language_metrics(conn):
-    cursor = conn.cursor()
-    
-    query = """
-            SELECT DISTINCT ON(repo_id, language_id)
-                repo_id,
-                language_id,
-                bytes
-            FROM language_snapshots
-            ORDER BY repo_id, language_id, snapshot_date DESC
-            """
-
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    cursor.close()
-    result = {}
-
-    for repo_id, language_id, bytes_ in rows:
-        result.setdefault(repo_id, {})[language_id] = bytes_
-        
-    return result
-    
-def get_all_languages(conn):
-    cursor = conn.cursor()
-    
-    query = """
-            SELECT language_id, language_name FROM languages
-            """
-            
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    cursor.close()
-    
-    return { name: lid for lid,name in rows}
 
 def bulk_insert_languages(conn, languages: set):
     if not languages: return
@@ -180,25 +190,37 @@ def bulk_insert_languages(conn, languages: set):
     execute_values(cursor, query, values)
     cursor.close()
 
-def get_latest_language_metrics(conn):
-    cursor= conn.cursor()
+def update_last_run(conn, last_run:dict):
+        cursor = conn.cursor()
+        
+        query = """
+                INSERT INTO ingestion_state (source, last_run)
+                VALUES %s
+                ON CONFLICT(source)
+                DO UPDATE SET last_run = EXCLUDED.last_run;
+                """
+        
+        values = [(source, timestamp) for source, timestamp in last_run.items()]
+        
+        execute_values(cursor, query, values)
+        
+        cursor.close()
+
+def clean_up_db(conn, days_to_keep=30):
+    cursor = conn.cursor()
     
     query = """
-            SELECT DISTINCT ON(repo_id, language_id)
-                repo_id,
-                language_id,
-                bytes
-            FROM language_snapshots
-            ORDER BY repo_id, language_id, snapshot_date DESC;
-        """
-        
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    cursor.close()
-    result = {}
-
-    for repo_id, language_id, bytes in rows:
-        result.setdefault(repo_id, {})[language_id] = bytes
+            DELETE FROM repo_snapshots
+            WHERE snapshot_date < CURRENT_DATE - INTERVAL '%s days';
+            """
     
-    return result
+    cursor.execute(query, (days_to_keep,))
+    
+    query = """
+            DELETE FROM language_snapshots
+            WHERE snapshot_date < CURRENT_DATE - INTERVAL '%s days';
+            """
+    
+    cursor.execute(query, (days_to_keep,))
+    cursor.close()
     
