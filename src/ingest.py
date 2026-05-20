@@ -91,16 +91,16 @@ def run_ingestion(usernames=None):
                 
                 if not languages:
                     logger.warning(f"No languages detected for repo {repo_name}")
-                
-                for language_name, bytes_ in languages.items():
-                    languages_to_insert.add(language_name)
+                else:
+                    for language_name, bytes_ in languages.items():
+                        languages_to_insert.add(language_name)
 
-                    language_snapshots_raw.append((
-                        repo["id"],
-                        today,
-                        language_name,
-                        bytes_
-                    ))
+                        language_snapshots_raw.append((
+                            repo["id"],
+                            today,
+                            language_name,
+                            bytes_
+                        ))
                     
                 changed_repo_ids.add(repo["id"])
         
