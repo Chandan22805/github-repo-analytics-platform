@@ -91,28 +91,6 @@ def get_all_languages(conn):
     cursor.close()
     
     return { name: lid for lid,name in rows}
-
-def get_latest_language_metrics(conn):
-    cursor= conn.cursor()
-    
-    query = """
-            SELECT DISTINCT ON(repo_id, language_id)
-                repo_id,
-                language_id,
-                bytes
-            FROM language_snapshots
-            ORDER BY repo_id, language_id, snapshot_date DESC;
-        """
-        
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    cursor.close()
-    result = {}
-
-    for repo_id, language_id, bytes in rows:
-        result.setdefault(repo_id, {})[language_id] = bytes
-    
-    return result
  
 #Inserts
 def bulk_insert_companies(conn, companies:dict):
