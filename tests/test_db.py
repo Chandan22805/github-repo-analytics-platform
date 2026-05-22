@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.abspath("src"))
 from db import get_last_run, get_latest_repo_metrics, get_all_companies, get_latest_language_metrics, get_all_languages, bulk_insert_companies, bulk_insert_language_snapshots, bulk_insert_languages, bulk_insert_repos, bulk_insert_snapshots
 from datetime import date
 
+# Reads
 def test_get_last_run(mock_conn):
     mock_conn.cursor().fetchall.return_value = [
         ("anthropic", date(2026, 4, 16)), 
@@ -87,6 +88,7 @@ def test_get_all_languages(mock_conn):
     
     assert result.get("python") == 1
 
+# Empty inserts
 def test_bulk_insert_companies_empty(mock_conn):
     bulk_insert_companies(mock_conn, {})
     mock_conn.cursor.assert_not_called()
@@ -107,20 +109,40 @@ def test_bulk_insert_language_snapshots_empty(mock_conn):
     bulk_insert_language_snapshots(mock_conn, [])
     mock_conn.cursor.assert_not_called()
 
-# def test_bulk_insert_companies_non_empty(mock_conn):
-#     companies = {12345 : "anthrpoic", 67890:"google"}
+# Non-empty inserts
+def test_bulk_insert_companies_non_empty(mock_conn):
+    companies = {12345 : "anthrpoic", 67890:"google"}
     
-#     with patch("db.execute_values") as mock_execute:
-#         bulk_insert_companies(mock_conn, companies)
-#         mock_conn.assert_called_once()
+    with patch("db.execute_values") as mock_execute:
+        bulk_insert_companies(mock_conn, companies)
+        mock_execute.assert_called_once()
 
-# def test_bulk_insert_languages_non_empty(mock_conn):
-#     languages = set(["python", "java"])
-#     with patch("db.execute_values") as mock_execute:
-#         bulk_insert_languages(mock_conn, languages)
-#         mock_conn.assert_called_once()
+def test_bulk_insert_languages_non_empty(mock_conn):
+    languages = set(["python", "java"])
+    with patch("db.execute_values") as mock_execute:
+        bulk_insert_languages(mock_conn, languages)
+        mock_execute.assert_called_once()
 
-# def test_bulk_insert_repos_non_empty(mock_conn):
+def test_bulk_insert_repos_non_empty(mock_conn):
+    repos = {
+        1000: (1000, 12345, "repo1", "anthropic/repo1", "Python", "2024-01-01", "2024-01-02"),
+        2000: (2000, 67890, "repo2", "google/repo2", "Go", "2024-01-01", "2024-01-02")
+    }
+    with patch("db.execute_values") as mock_execute:
+        bulk_insert_repos(mock_conn, repos)
+        mock_execute.assert_called_once()
+
+def test_bulk_insert_language_snapshots_non_empty(mock_conn):
+    snapshots = [(1000, date.today(), 1, 5000), (2000, date.today(), 2, 3000)]
+    with patch("db.execute_values") as mock_execute:
+        bulk_insert_language_snapshots(mock_conn, snapshots)
+        mock_execute.assert_called_once()
+
+def test_bulk_insert_snapshots_non_empty(mock_conn):
+    snapshots = [(1000, date.today(), 100, 5, 10)]
+    with patch("db.execute_values") as mock_execute:
+        bulk_insert_snapshots(mock_conn, snapshots)
+        mock_execute.assert_called_once()
 
 if __name__ == "__main__":
     test_get_last_run()
@@ -133,5 +155,8 @@ if __name__ == "__main__":
     test_bulk_insert_languages_empty()
     test_bulk_insert_snapshots_empty()
     test_bulk_insert_language_snapshots_empty()
-    # test_bulk_insert_companies_non_empty()
-    # test_bulk_insert_languages_non_empty()
+    test_bulk_insert_companies_non_empty()
+    test_bulk_insert_languages_non_empty()
+    test_bulk_insert_repos_non_empty()
+    test_bulk_insert_languages_non_empty()
+    test_bulk_insert_language_snapshots_non_empty()
