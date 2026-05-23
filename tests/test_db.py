@@ -163,20 +163,5 @@ def test_clean_up_db(mock_conn):
     calls = mock_conn.cursor().execute.call_args_list
     assert "DELETE FROM repo_snapshots" in calls[0][0][0]
     assert "DELETE FROM language_snapshots" in calls[1][0][0]
-   
-if __name__ == "__main__":
-    test_get_last_run()
-    test_get_latest_repo_metrics()
-    test_get_all_companies()
-    test_get_latest_language_metrics()
-    test_get_all_languages()
-    test_bulk_insert_companies_empty()
-    test_bulk_insert_repos_empty()
-    test_bulk_insert_languages_empty()
-    test_bulk_insert_snapshots_empty()
-    test_bulk_insert_language_snapshots_empty()
-    test_bulk_insert_companies_non_empty()
-    test_bulk_insert_languages_non_empty()
-    test_bulk_insert_repos_non_empty()
-    test_bulk_insert_languages_non_empty()
-    test_bulk_insert_language_snapshots_non_empty()
+
+
