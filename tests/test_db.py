@@ -6,7 +6,7 @@ import os
 
 sys.path.insert(0, os.path.abspath("src"))
 
-from db import get_last_run, get_latest_repo_metrics, get_all_companies, get_latest_language_metrics, get_all_languages, bulk_insert_companies, bulk_insert_language_snapshots, bulk_insert_languages, bulk_insert_repos, bulk_insert_snapshots
+from db import get_last_run, get_latest_repo_metrics, get_all_companies, get_latest_language_metrics, get_all_languages, bulk_insert_companies, bulk_insert_language_snapshots, bulk_insert_languages, bulk_insert_repos, bulk_insert_snapshots, update_last_run, clean_up_db
 from datetime import date
 
 # Reads
@@ -144,6 +144,26 @@ def test_bulk_insert_snapshots_non_empty(mock_conn):
         bulk_insert_snapshots(mock_conn, snapshots)
         mock_execute.assert_called_once()
 
+def test_update_last_run(mock_conn):
+    last_run = {"anthropic": date.today(), "google" : date.today()}
+    with patch("db.execute_values") as mock_execute:
+        update_last_run(mock_conn, last_run)
+        mock_execute.assert_called_once()
+        
+        call_args = mock_execute.call_args
+        values = call_args[0][2]
+        assert len(values) == 2
+        assert ("anthropic" , date.today()) in values
+
+def test_clean_up_db(mock_conn):
+    clean_up_db(mock_conn)
+    
+    assert mock_conn.cursor().execute.call_count == 2
+    
+    calls = mock_conn.cursor().execute.call_args_list
+    assert "DELETE FROM repo_snapshots" in calls[0][0][0]
+    assert "DELETE FROM language_snapshots" in calls[1][0][0]
+   
 if __name__ == "__main__":
     test_get_last_run()
     test_get_latest_repo_metrics()

@@ -184,6 +184,7 @@ def update_last_run(conn, last_run:dict):
         
         cursor.close()
 
+#Clean-up db
 def clean_up_db(conn, days_to_keep=30):
     cursor = conn.cursor()
     
