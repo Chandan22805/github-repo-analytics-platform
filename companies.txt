@@ -1,9 +1,0 @@
-anthropic
-apple
-Chandan22805
-github
-google
-meta
-microsoft
-netflix
-openai
