@@ -188,18 +188,17 @@ def update_last_run(conn, last_run:dict):
 def clean_up_db(conn, days_to_keep=30):
     cursor = conn.cursor()
     
-    query = """
+    query_repo = """
             DELETE FROM repo_snapshots
             WHERE snapshot_date < CURRENT_DATE - INTERVAL '%s days';
             """
     
-    cursor.execute(query, (days_to_keep,))
+    cursor.execute(query_repo, (days_to_keep,))
     
-    query = """
+    query_language = """
             DELETE FROM language_snapshots
             WHERE snapshot_date < CURRENT_DATE - INTERVAL '%s days';
             """
     
-    cursor.execute(query, (days_to_keep,))
+    cursor.execute(query_language, (days_to_keep,))
     cursor.close()
-    
