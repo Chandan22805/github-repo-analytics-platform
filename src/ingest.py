@@ -162,7 +162,7 @@ def run_ingestion(usernames=None):
         
         clean_up_db(conn)
         
-        export_to_s3()
+        export_to_s3(conn)
         
         logger.info("Committing transaction")
         conn.commit()
