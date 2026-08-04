@@ -160,9 +160,9 @@ def run_ingestion(usernames=None):
         if len(repo_snapshots) < 5:
             logger.warning("Unusually low snapshot count detected")    
         
-        clean_up_db(conn)
-        
         export_to_s3(conn)
+        
+        clean_up_db(conn)
         
         logger.info("Committing transaction")
         conn.commit()
