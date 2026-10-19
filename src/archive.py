@@ -5,6 +5,7 @@ import boto3
 import io
 import os
 from datetime import date, timedelta
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ def _get_expiring_rows(conn, days_to_keep:int = 30):
     query_repo = """
             SELECT * 
             FROM repo_snapshots
-            WHERE snapshot_date < CURRENT_DATE - INTERVAL '%s days';
+            WHERE snapshot_date < CURRENT_DATE - INTERVAL '1 day' * %s;
         """
     cursor.execute(query_repo, (days_to_keep,))
     repo_rows = cursor.fetchall()
@@ -36,7 +37,7 @@ def _get_expiring_rows(conn, days_to_keep:int = 30):
     query_language = """
             SELECT * 
             FROM language_snapshots
-            WHERE snapshot_date < CURRENT_DATE - INTERVAL '%s days';
+            WHERE snapshot_date < CURRENT_DATE - INTERVAL '1 day' * %s;
         """
     cursor.execute(query_language, (days_to_keep,))
     language_rows = cursor.fetchall()
@@ -75,7 +76,7 @@ def export_to_s3(conn, days_to_keep:int = 30):
     repo_rows, language_rows = _get_expiring_rows(conn, days_to_keep)
     
     if not repo_rows and not language_rows:
-        logger.info(f"No expiring data found for {date_str}, skipping S# export")
+        logger.info(f"No expiring data found for {date_str}, skipping S3 export")
         return 
 
     logger.info(
@@ -84,17 +85,35 @@ def export_to_s3(conn, days_to_keep:int = 30):
         )
     
     s3 = boto3.client("s3")
-    
+
     exports = [
-        (repo_rows, REPO_SCHEMA,f"github_analytics/repo_snapshots/date={date_str}/data.parquet"),
-        (language_rows, LANGUAGE_SCHEMA,f"github_analytics/language_snapshots/date={date_str}/data.parquet")
-    ]
+                (repo_rows, REPO_SCHEMA,f"github_analytics/repo_snapshots/date={date_str}/data.parquet"),
+                (language_rows, LANGUAGE_SCHEMA,f"github_analytics/language_snapshots/date={date_str}/data.parquet")
+            ]
     
-    for rows, schema, s3_key in exports:
-        buffer = _rows_to_parquet_buffer(rows, schema)
-        if buffer is None:
-            logger.warning(f"No data for {s3_key}, skipping")
-            continue
+    for attempt in range(3):
+
+        try:
+            for rows, schema, s3_key in exports:
+                buffer = _rows_to_parquet_buffer(rows, schema)
+                if buffer is None:
+                    logger.warning(f"No data for {s3_key}, skipping")
+                    continue
+                buffer.seek(0)  # Reset buffer position for retry
+
+                s3.upload_fileobj(buffer, bucket, s3_key)
+                logger.info(f"Upload s3://{bucket}/{s3_key}")
+
+                s3.head_object(Bucket=bucket, Key=s3_key)
+                logger.info(f"Verified s3://{bucket}/{s3_key} exists")
         
-        s3.upload_fileobj(buffer, bucket, s3_key)
-        logger.info(f"Upload s3://{bucket}/{s3_key}")
+        except Exception as e:
+            logger.error(f"Failed to upload to S3: {e}")
+            
+            if attempt < 2:
+                wait_time = 2 ** attempt
+                logger.info(f"Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+            else:
+                logger.error("Max retries reached. Aborting S3 export.")
+                raise
