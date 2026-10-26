@@ -7,6 +7,8 @@ import os
 from datetime import date, timedelta
 import time
 
+from config import AWS_BUCKET_NAME
+
 logger = logging.getLogger(__name__)
 
 REPO_SCHEMA = pa.schema([
@@ -67,8 +69,6 @@ def _rows_to_parquet_buffer(rows:list, schema:pa.Schema) -> io.BytesIO:
 
 def export_to_s3(conn, days_to_keep:int = 30):
     
-    bucket = os.environ["AWS_BUCKET_NAME"]
-    
     expiring_date = date.today() - timedelta(days = days_to_keep)
     
     date_str = expiring_date.isoformat()
@@ -101,11 +101,11 @@ def export_to_s3(conn, days_to_keep:int = 30):
                     continue
                 buffer.seek(0)  # Reset buffer position for retry
 
-                s3.upload_fileobj(buffer, bucket, s3_key)
-                logger.info(f"Upload s3://{bucket}/{s3_key}")
+                s3.upload_fileobj(buffer, AWS_BUCKET_NAME, s3_key)
+                logger.info(f"Upload s3://{AWS_BUCKET_NAME}/{s3_key}")
 
-                s3.head_object(Bucket=bucket, Key=s3_key)
-                logger.info(f"Verified s3://{bucket}/{s3_key} exists")
+                s3.head_object(Bucket=AWS_BUCKET_NAME, Key=s3_key)
+                logger.info(f"Verified s3://{AWS_BUCKET_NAME}/{s3_key} exists")
         
         except Exception as e:
             logger.error(f"Failed to upload to S3: {e}")
