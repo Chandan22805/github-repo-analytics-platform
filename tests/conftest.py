@@ -1,5 +1,10 @@
 import pytest
 from unittest.mock import MagicMock
+import os
+
+os.environ.setdefault("GITHUB_TOKEN", "test-token")
+os.environ.setdefault("DB_URL", "postgresql://test:test@localhost:5432/test")
+os.environ.setdefault("AWS_BUCKET_NAME", "test-bucket")
 
 @pytest.fixture
 def mock_conn():
