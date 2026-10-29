@@ -1,6 +1,10 @@
-from unittest.mock import patch
+import logging
 import sys
 import os
+
+from unittest.mock import patch
+from conftest import mock_conn, mock_github_client
+
 sys.path.insert(0, os.path.abspath("src"))
 from ingest import run_ingestion
 
@@ -10,8 +14,9 @@ def test_ingestion_with_empty_companies_list(mock_conn, mock_github_client):
         with patch("ingest.get_all_companies", return_value=[]):
             with patch("ingest.get_connection", return_value=mock_conn):
                 with patch("db.execute_values"):
-                    run_ingestion()
-                    mock_conn.commit.assert_called_once()
+                    with patch("ingest.export_to_s3"):
+                        run_ingestion()
+    mock_conn.commit.assert_called_once()
                     
 def test_ingestion_with_non_empty_companies_list(mock_conn, mock_github_client):
     # Mock GitHub API to return some repos
@@ -37,43 +42,43 @@ def test_ingestion_with_non_empty_companies_list(mock_conn, mock_github_client):
             with patch("ingest.get_connection", return_value=mock_conn):
                 with patch("db.execute_values"):
                     with patch("ingest.get_all_languages", return_value= {"Python" : 1}):
-                        run_ingestion()
-                        mock_conn.commit.assert_called_once()
+                        with patch("ingest.export_to_s3"):
+                            run_ingestion()
+    mock_conn.commit.assert_called_once()
                         
 def test_ingestion_with_no_repos_for_a_company(mock_conn, mock_github_client, caplog):
+    #Github returns an empty list of repos for the company
     mock_github_client.get_user_repos.return_value = []
     with patch("ingest.GitHubClient") as MockClient:
         MockClient.return_value = mock_github_client
         with patch("ingest.get_all_companies", return_value = ["anthropic"]):
             with patch("ingest.get_connection", return_value= mock_conn):
                 with patch("db.execute_values"):
-                    run_ingestion()
-                    # assert "No repos returned for anthropic" in caplog.text
+                    with patch("ingest.export_to_s3"):    
+                            with caplog.at_level(logging.WARNING):
+                                run_ingestion()
+
+    mock_github_client.get_user_repos.assert_called_once()
+    assert "No repos returned for anthropic" in caplog.text
+    mock_conn.commit.assert_called_once()
 
 def test_ingestion_with_improper_format(mock_conn, mock_github_client, caplog):
-    mock_github_client.get_user_repos.return_value = [
-        {
-            "owner": {"id": 12345, "login": "anthropic"},
-            "name": "test-repo",
-            "full_name": "anthropic/test-repo",
-            "language": "Python",
-            "created_at": "2024-01-01",
-            "updated_at": "2024-01-02",
-            "stargazers_count": 100,
-            "forks_count": 50,
-            "open_issues_count": 10
-        }
-    ]
+    mock_github_client.get_user_repos.return_value = {"message": "Bad credentials"}
     with patch("ingest.GitHubClient") as MockClient:
         MockClient.return_value = mock_github_client
         with patch("ingest.get_all_companies", return_value = ["anthropic"]):
             with patch("ingest.get_connection", return_value= mock_conn):
                 with patch("db.execute_values"):
-                    run_ingestion()
-                    # assert "Unexpected GitHub API response format" in caplog.text
+                    with patch("ingest.export_to_s3"):
+                        with caplog.at_level(logging.ERROR):
+                            run_ingestion()
+
+    mock_github_client.get_user_repos.assert_called_once()
+    assert "Unexpected GitHub API response format" in caplog.text
+    mock_conn.commit.assert_called_once()
                 
 def test_ingestion_with_missing_owner(mock_conn, mock_github_client, caplog):
-    mock_github_client.getuser_repos.return_value = [
+    mock_github_client.get_user_repos.return_value = [
         {
             "id": 1000,
             "name": "test-repo",
@@ -91,9 +96,14 @@ def test_ingestion_with_missing_owner(mock_conn, mock_github_client, caplog):
         with patch("ingest.get_all_companies", return_value = ["anthropic"]):
             with patch("ingest.get_connection", return_value= mock_conn):
                 with patch("db.execute_values"):
-                    run_ingestion()
-                    # assert "Repo missing owner. Skipping." in caplog.text
-                    
+                    with patch("ingest.export_to_s3"):
+                        with caplog.at_level(logging.WARNING):
+                            run_ingestion()
+
+    mock_github_client.get_user_repos.assert_called_once()
+    assert "Repo missing owner. Skipping." in caplog.text
+    mock_conn.commit.assert_called_once()
+
 def test_ingestion_repo_with_no_languages(mock_conn, mock_github_client, caplog):
     mock_github_client.get_user_repos.return_value = [
         {
@@ -117,11 +127,16 @@ def test_ingestion_repo_with_no_languages(mock_conn, mock_github_client, caplog)
         with patch("ingest.get_all_companies", return_value = ["anthropic"]):
             with patch("ingest.get_connection", return_value= mock_conn):
                 with patch("db.execute_values"):
-                    with patch("ingest.get_all_languages", return_value= {"Python" : 1}):
-                        run_ingestion()
-                        # assert "No languages detected for repo anthropic" in caplog.text
-                        
-def test_ingestion_cleanup_called(mock_conn, mock_github_client):
+                    with patch("ingest.get_all_languages", return_value=None):
+                        with patch("ingest.export_to_s3"):   
+                            with caplog.at_level(logging.WARNING):
+                                run_ingestion()
+
+    mock_github_client.get_repo_languages.assert_called_once()
+    assert "No languages detected for repo test-repo" in caplog.text
+    mock_conn.commit.assert_called_once()
+
+def test_ingestion_cleanup_called_after_export_to_s3(mock_conn, mock_github_client):
     mock_github_client.get_user_repos.return_value = [
         {
             "id": 1000,
@@ -144,7 +159,8 @@ def test_ingestion_cleanup_called(mock_conn, mock_github_client):
             with patch("ingest.get_connection", return_value=mock_conn):
                 with patch("db.execute_values"):
                     with patch("ingest.get_all_languages", return_value= {"Python" : 1}):
-                        with patch("ingest.clean_up_db") as  mock_cleanup:
-                            run_ingestion()
-                            mock_cleanup.assert_called_once()
-        
+                        with patch("ingest.export_to_s3") as mock_archive:    
+                            with patch("ingest.clean_up_db") as  mock_cleanup:
+                                run_ingestion()
+                                mock_archive.assert_called_once()
+                                mock_cleanup.assert_called_once()
