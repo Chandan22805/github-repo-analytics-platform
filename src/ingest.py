@@ -57,6 +57,8 @@ def run_ingestion(usernames=None):
                 
             if not isinstance(repos, list):
                 logger.error("Unexpected GitHub API response format")
+                continue
+            
             for repo in repos :
                 # print(repo["name"])
                 if not repo.get("id"):
