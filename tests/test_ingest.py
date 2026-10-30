@@ -1,8 +1,9 @@
 import logging
 import sys
 import os
+import pytest
 
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from conftest import mock_conn, mock_github_client
 
 sys.path.insert(0, os.path.abspath("src"))
@@ -153,6 +154,8 @@ def test_ingestion_cleanup_called_after_export_to_s3(mock_conn, mock_github_clie
     ]
     mock_github_client.get_repo_languages.return_value = {"Python": 5000}
     
+    manager = MagicMock()
+
     with patch("ingest.GitHubClient") as MockClient:
         MockClient.return_value = mock_github_client
         with patch("ingest.get_all_companies", return_value=["anthropic"]):
@@ -161,6 +164,22 @@ def test_ingestion_cleanup_called_after_export_to_s3(mock_conn, mock_github_clie
                     with patch("ingest.get_all_languages", return_value= {"Python" : 1}):
                         with patch("ingest.export_to_s3") as mock_archive:    
                             with patch("ingest.clean_up_db") as  mock_cleanup:
+                                manager.attach_mock(mock_archive,"archive")
+                                manager.attach_mock(mock_cleanup,"cleanup")
                                 run_ingestion()
-                                mock_archive.assert_called_once()
-                                mock_cleanup.assert_called_once()
+
+    assert [c[0] for c in manager.mock_calls] == ["archive", "cleanup"]
+
+def test_cleanup_not_called_when_export_fails(mock_conn, mock_github_client):
+    with patch("ingest.GitHubClient") as MockClient:
+        MockClient.return_value = mock_github_client
+        with patch("ingest.get_all_companies", return_value=["anthropic"]):
+            with patch("ingest.get_connection", return_value= mock_conn):
+                with patch("db.execute_values"):
+                    with patch("ingest.export_to_s3", side_effect=Exception("s3 down")):
+                        with patch("ingest.clean_up_db") as mock_cleanup:
+                            with pytest.raises(Exception):
+                                run_ingestion()
+
+    mock_cleanup.assert_not_called()
+    mock_conn.commit.assert_not_called()
