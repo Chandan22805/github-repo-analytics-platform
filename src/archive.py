@@ -106,6 +106,8 @@ def export_to_s3(conn, days_to_keep:int = 30):
 
                 s3.head_object(Bucket=AWS_BUCKET_NAME, Key=s3_key)
                 logger.info(f"Verified s3://{AWS_BUCKET_NAME}/{s3_key} exists")
+
+            break
         
         except Exception as e:
             logger.error(f"Failed to upload to S3: {e}")
