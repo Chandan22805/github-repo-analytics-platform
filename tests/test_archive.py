@@ -1,10 +1,8 @@
-import io
-import logging
 import os
 import sys
 
 from datetime import date, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pyarrow.parquet as pq
 import pytest
