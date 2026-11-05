@@ -6,6 +6,7 @@ The platform demonstrates modern data engineering practices including incrementa
 
 > **Built to learn end-to-end data engineering by designing a complete data platform.**
 
+![Tests](https://github.com/Chandan22805/github-repo-analytics-platform/actions/workflows/tests.yml/badge.svg)
 ---
 
 ## Highlights
