@@ -47,7 +47,7 @@ def test_export_raises_after_retries_exhausted(mock_conn):
         with patch("archive.boto3.client") as mock_boto:
             mock_boto.return_value.upload_fileobj.side_effect = Exception("s3 down")
             with patch("archive.time.sleep"):
-                with patch(pytest.raises(Exception)):
+                with pytest.raises(Exception):
                     export_to_s3(mock_conn)
 
     assert mock_boto.return_value.upload_fileobj.call_count == 3
