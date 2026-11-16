@@ -1,13 +1,26 @@
-from unittest.mock  import patch
-from conftest import mock_conn
-
-import sys
 import os
+import sys
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath("src"))
 
-from db import get_last_run, get_latest_repo_metrics, get_all_companies, get_latest_language_metrics, get_all_languages, bulk_insert_companies, bulk_insert_language_snapshots, bulk_insert_languages, bulk_insert_repos, bulk_insert_snapshots, update_last_run, clean_up_db
 from datetime import date
+
+from db import (
+    bulk_insert_companies,
+    bulk_insert_language_snapshots,
+    bulk_insert_languages,
+    bulk_insert_repos,
+    bulk_insert_snapshots,
+    clean_up_db,
+    get_all_companies,
+    get_all_languages,
+    get_last_run,
+    get_latest_language_metrics,
+    get_latest_repo_metrics,
+    update_last_run,
+)
+
 
 # Reads
 def test_get_last_run(mock_conn):
@@ -118,7 +131,7 @@ def test_bulk_insert_companies_non_empty(mock_conn):
         mock_execute.assert_called_once()
 
 def test_bulk_insert_languages_non_empty(mock_conn):
-    languages = set(["python", "java"])
+    languages = {"python", "java"}
     with patch("db.execute_values") as mock_execute:
         bulk_insert_languages(mock_conn, languages)
         mock_execute.assert_called_once()

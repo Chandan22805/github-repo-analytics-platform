@@ -1,13 +1,13 @@
 import logging
-import sys
 import os
-import pytest
+import sys
+from unittest.mock import MagicMock, patch
 
-from unittest.mock import patch, MagicMock
-from conftest import mock_conn, mock_github_client
+import pytest
 
 sys.path.insert(0, os.path.abspath("src"))
 from ingest import run_ingestion
+
 
 def test_ingestion_with_empty_companies_list(mock_conn, mock_github_client):
     with patch("ingest.GitHubClient") as MockClient:

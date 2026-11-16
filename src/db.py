@@ -1,8 +1,8 @@
 import psycopg2
 from psycopg2.extras import execute_values
-import datetime
 
 from config import DB_URL
+
 
 #Connection
 def get_connection():

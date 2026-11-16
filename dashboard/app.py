@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
 
 st.set_page_config(page_title="GitHub Repo Analytics", layout="wide")
 
@@ -40,7 +41,7 @@ def load(sql: str, params: dict | None = None) -> pd.DataFrame:
 
 
 def plot(fig):
-    fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), legend_title_text="")
+    fig.update_layout(margin={"l": 0, "r": 0, "t": 30, "b": 0}, legend_title_text="")
     st.plotly_chart(fig, width="stretch")
 
 
@@ -283,7 +284,7 @@ with tab_sql:
                 start = time.time()
                 df = run_user_query(clean)
                 st.session_state.result = ("ok", df, time.time() - start)
-            except Exception as e:
+            except SQLAlchemyError as e:
                 st.session_state.result = ("error", str(getattr(e, "orig", e)))
 
     result = st.session_state.get("result")

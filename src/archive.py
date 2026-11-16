@@ -1,11 +1,11 @@
+import io
 import logging
+import time
+from datetime import date, timedelta
+
+import boto3
 import pyarrow as pa
 import pyarrow.parquet as pq
-import boto3
-import io
-import os
-from datetime import date, timedelta
-import time
 
 from config import AWS_BUCKET_NAME
 

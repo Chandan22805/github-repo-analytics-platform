@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import MagicMock
 import os
+from unittest.mock import MagicMock
+
+import pytest
 
 os.environ.setdefault("GITHUB_TOKEN", "test-token")
 os.environ.setdefault("DB_URL", "postgresql://test:test@localhost:5432/test")

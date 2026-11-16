@@ -1,6 +1,9 @@
 import time
+
 import requests
-from config import GITHUB_TOKEN, BASE_URL
+
+from config import BASE_URL, GITHUB_TOKEN
+
 
 class GitHubClient:
 

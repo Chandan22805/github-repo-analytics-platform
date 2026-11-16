@@ -1,13 +1,25 @@
-import sys
 import logging
+import sys
 import time
 from datetime import date
 
-from github_client import GitHubClient
-from db import get_connection, get_latest_repo_metrics, get_latest_language_metrics, get_all_companies, get_all_languages, get_last_run,\
-               bulk_insert_companies, bulk_insert_repos, bulk_insert_languages, bulk_insert_snapshots, bulk_insert_language_snapshots,\
-               update_last_run, clean_up_db
 from archive import export_to_s3
+from db import (
+    bulk_insert_companies,
+    bulk_insert_language_snapshots,
+    bulk_insert_languages,
+    bulk_insert_repos,
+    bulk_insert_snapshots,
+    clean_up_db,
+    get_all_companies,
+    get_all_languages,
+    get_connection,
+    get_last_run,
+    get_latest_language_metrics,
+    get_latest_repo_metrics,
+    update_last_run,
+)
+from github_client import GitHubClient
 
 logging.basicConfig(
     level = logging.INFO,

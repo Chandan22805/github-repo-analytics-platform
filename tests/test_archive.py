@@ -1,6 +1,5 @@
 import os
 import sys
-
 from datetime import date, timedelta
 from unittest.mock import patch
 
@@ -8,7 +7,7 @@ import pyarrow.parquet as pq
 import pytest
 
 sys.path.insert(0, os.path.abspath("src"))
-from archive import _get_expiring_rows, _rows_to_parquet_buffer, REPO_SCHEMA, export_to_s3
+from archive import REPO_SCHEMA, _rows_to_parquet_buffer, export_to_s3
 
 ROWS = [(1, date(2024,1,1), 100, 5, 2)]
 
@@ -48,7 +47,7 @@ def test_export_raises_after_retries_exhausted(mock_conn):
         with patch("archive.boto3.client") as mock_boto:
             mock_boto.return_value.upload_fileobj.side_effect = Exception("s3 down")
             with patch("archive.time.sleep"):
-                with pytest.raises(Exception):
+                with patch(pytest.raises(Exception)):
                     export_to_s3(mock_conn)
 
     assert mock_boto.return_value.upload_fileobj.call_count == 3

@@ -1,12 +1,11 @@
 import logging
-import sys
 import os
-
+import sys
 from datetime import date, timedelta
 
 sys.path.insert(0, os.path.abspath("src"))
+
 from extract import extract
-from conftest import mock_github_client
 
 yesterday = date.today()-timedelta(days=1) 
 last_run = {

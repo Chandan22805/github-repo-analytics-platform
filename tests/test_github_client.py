@@ -1,7 +1,5 @@
 import os
 import sys
-
-from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +7,7 @@ import requests
 
 sys.path.insert(0,os.path.abspath("src"))
 from github_client import GitHubClient
+
 
 def make_response(json_data = None, status = 200, headers = None):
     r = MagicMock()
