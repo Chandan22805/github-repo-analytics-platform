@@ -112,7 +112,7 @@ def test_ingestion_repo_with_no_languages(mock_conn, mock_github_client, caplog)
             "owner": {"id": 12345, "login": "anthropic"},
             "name": "test-repo",
             "full_name": "anthropic/test-repo",
-            "language": "Python",
+            "language":None,
             "created_at": "2024-01-01",
             "updated_at": "2024-01-02",
             "stargazers_count": 100,
