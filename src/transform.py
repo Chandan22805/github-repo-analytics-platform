@@ -78,3 +78,31 @@ def transform(repos, companies, today) -> ETLBatch:
         changed_repo_ids = changed_repo_ids,
         last_run = last_run
     )
+
+def carry_forward(batch, latest_repo_metrics, latest_language_metrics, today):
+
+    extra_repo_snapshots = []
+    extra_language_snapshots = []
+
+    for repo_id, metrics in latest_repo_metrics.items():
+        if repo_id not in batch.changed_repo_ids:
+            stars,forks,open_issues = metrics
+            extra_repo_snapshots.append((
+                repo_id,
+                today,
+                stars,
+                forks,
+                open_issues
+            ))
+
+    for repo_id, lang_dict in latest_language_metrics.items():
+        if repo_id not in batch.changed_repo_ids:
+            for language_id, bytes_ in lang_dict.items():
+                extra_language_snapshots.append((
+                    repo_id,
+                    today,
+                    language_id,
+                    bytes_
+                )) 
+
+    return extra_repo_snapshots, extra_language_snapshots
