@@ -16,7 +16,7 @@ class ETLBatch:
 
 def transform(repos, companies, today) -> ETLBatch:
     repo_snapshots = []
-    language_snapshots = []
+    language_snapshots_raw = []
     companies_to_insert = {}
     repos_to_insert = {}
     languages = set()
@@ -62,7 +62,7 @@ def transform(repos, companies, today) -> ETLBatch:
             for language_name, bytes_ in repo["languages"].items():
                 languages.add(language_name)
                 
-                language_snapshots.append((
+                language_snapshots_raw.append((
                     repo["id"],
                     today,
                     language_name,
@@ -71,7 +71,7 @@ def transform(repos, companies, today) -> ETLBatch:
 
     return ETLBatch(
         repo_snapshots = repo_snapshots,
-        language_snapshots = language_snapshots,
+        language_snapshots_raw = language_snapshots_raw,
         companies_to_insert = companies_to_insert,
         repos_to_insert = repos_to_insert,
         languages = languages,
